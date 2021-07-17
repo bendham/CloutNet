@@ -67,34 +67,14 @@ async def on_message(context):
 async def on_message(context):
   await context.channel.send("CloutNet never dies.")
 
-# @bot.command(name="finalcountdown", help="costs 5 CC but plays music")
+# @bot.command(name='stimmy', help="papa gov gives mun")
 # async def on_message(context):
-#   await music_request(context)
+#   stimmy(context)
+#   await context.channel.send("The Population has been stimmied.")
 
-# @tasks.loop(hours=24)
-# async def stimmy_the_net():
-#   gimme_money()
-
-#Stimmy Command - obsolete, uses db
-"""
-@bot.command(name='stimmy', help="papa gov gives mun")
+@bot.command(name="finalcountdown", help="costs 5 CC but plays music")
 async def on_message(context):
-  await context.channel.send(stimmy(context))
-
-def stimmy(context):
-  guildId = context.guild.id
-
-  memberDict = db[guildId]
-
-
-  for user in memberDict.keys():
-    memberDict[user] = memberDict[user] + 3
-
-
-  db[guildId] = memberDict
-
-  return "Stimmy success"
-"""
+  await context.channel.send(await music_request(context))
 
 """
 @bot.command(name='del', help="papa delete clout")
@@ -102,10 +82,9 @@ async def on_message(context):
  del_cloutnet(context)
  print("Deleted.")
 """
-"""
 async def music_request(ctx):
 
-  price = 1
+  price = 0
 
   guild = ctx.guild
   guildId = guild.id
@@ -117,33 +96,32 @@ async def music_request(ctx):
   video_link="https://www.youtube.com/watch?v=MvXUZKEkhDA"
 
   
+  dynamoDB, user = getUserFromDb(guildId, memberId, None, True)
 
-  if(not in_db(guildId, memberId)):
-    return await ctx.channel.send("You do not contain the knowhow of playing music. Joing the net, CloutNet: !join.")
+  if(not user):
+    return "You do not contain the knowhow of playing music. Joing the net, CloutNet: !join."
 
-
-  if get_coins(guildId, memberId) >= price+1:
+  coins = getCoinsFromUser(user)
+  
+  if coins >= price+1:
     
 
     if voiceStatus:
 
       channel = voiceStatus.channel
       
-
-
-
-        
       try:
         await channel.connect()
       except:
-        return await ctx.channel.send("Songs already playing bro, take a chill pill.")
+        return "Songs already playing bro, take a chill pill."
+        
       voice_client = guild.voice_client
 
       YDL_OPTIONS = {'noplaylist':'True'}
       FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 
       if not voice_client.is_playing():
-          set_coins(guildId, memberId, get_coins(guildId, memberId) - price)
+          setUserCoins(guildId, memberId, coins - price)
 
           with YoutubeDL(YDL_OPTIONS) as ydl:
               info = ydl.extract_info(video_link, download=False)
@@ -153,39 +131,48 @@ async def music_request(ctx):
 
       while voice_client.is_playing():
         await sleep(5)
-      return await autoGamba(voice_client, ctx)
+      return await autoGamble(voice_client, guildId, memberId, user)
+    else: 
+      return "{0} before using this command join a voice channel!".format(at_user(memberId))
   else:
-    return await ctx.channel.send("You have such little clout you don't even know what music is. Get some Clout.")
+    return "You have such little clout you don't even know what music is. Get some Clout."
 
 
-async def autoGamba(voice_client, ctx):
+async def autoGamble(voice_client, guildId, memberId, userData):
   await voice_client.disconnect()
-  return gamble(ctx)
+  return gambleLogic(userData, guildId, memberId)
 
+def stimmy(context, dynamodb=None):
+  if not dynamodb:
+        dynamodb = boto3.resource('dynamodb', region_name="ca-central-1")
 
-def gimme_money():
-  for id in db.keys():
-    
-    guildId = str(id)
-    memberDict = db[guildId]
+  table = dynamodb.Table('CloutNet')
 
-    if isinstance(memberDict, dict):
-      size = len(memberDict)
-      threshHold = math.floor(size*0.8)
+  response = table.scan()
+  data = response['Items']
+  
+  while 'LastEvaluatedKey' in response:
+      response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
+      data.extend(response['Items'])
+  
+  for dataSet in data:
+    users = dataSet["Users"]
+    sortedUsers = dict(sorted(users.items(), key=lambda item: item[1], reverse=True))
+  
+    for idx, user in enumerate(sortedUsers.keys()):
+        size = len(users)
+        threshHold = math.floor(size*0.8)
 
-
-
-      for idx,user in enumerate(memberDict.keys()):
         posn = idx+1
 
-        if(posn >= threshHold):
-          memberDict[user] = memberDict[user] + 2
-        else:
-          memberDict[user] = memberDict[user] + 1
+        increment = 1 if posn <= threshHold else 2
 
-    db[guildId] = memberDict
+        sortedUsers[user] = sortedUsers[user] + increment
+    
+    dataSet["Users"] = sortedUsers
 
-"""
+    table.put_item(Item=dataSet)
+ 
 def clout_shop(context):
   header = ["Buy command", "Role Name", "Description", "Price"]
   table = []
@@ -203,7 +190,6 @@ async def buy_clout(context):
 
   dynamoDB,user = getUserFromDb(guildId, memberId, None, True)
 
-
   if(not user):
     return "You are not on cloutnet. Use !help to learn how to join."
 
@@ -220,7 +206,6 @@ async def buy_clout(context):
 
       if(roleName in memberRoleNameList):
         return "{} is already a {}. Leave some clout for the rest of us.".format(at_user(memberId),roleName)
-
 
       if(userCoins >= price):
         setUserCoins(guildId, memberId, userCoins - price, dynamoDB)
@@ -246,8 +231,6 @@ async def buy_clout(context):
     
 
   return msg
-
-
 
 def init_user(context):
   username = context.author
@@ -282,8 +265,11 @@ def gamble(context):
 
   user = getUserFromDb(guildId, usernameId)
 
-  if user:
-    coins = getCoinsFromUser(user)
+  return gambleLogic(user, guildId, usernameId)
+
+def gambleLogic(userData, guildId, usernameId):
+  if userData:
+    coins = getCoinsFromUser(userData)
     flip = random.randint(0, 1)
     if(coins > 0):
       if(flip):
@@ -296,9 +282,8 @@ def gamble(context):
       msg = "{0} is too poor to gamble".format(at_user(usernameId))
   else:
     msg = "CloutCoins could not be gambled"
-    
-  return msg
 
+  return msg
 
 def transfer_coin(context):
   usernameId = context.author.id
@@ -351,9 +336,6 @@ def flip():
     return "Heads"
   else:
     return "Tails"
-
-
-
 
 
 ## Helpers
