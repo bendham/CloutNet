@@ -1,20 +1,19 @@
-from tabulate import tabulate
+import boto3
+import discord
+import random
+import math
+
+from asyncio import sleep
+from botocore.exceptions import ClientError
 from discord.ext.commands import Bot, Cog
 from discord.ext import tasks
 from discord import FFmpegPCMAudio
+from helpers import *
+from tabulate import tabulate
 from youtube_dl import YoutubeDL
-from asyncio import sleep
-import boto3
-from botocore.exceptions import ClientError
-
-
-import discord
-import random
-
-import math
 
 client = discord.Client()
-COMMAND_SIGN = "~"
+COMMAND_SIGN = "#"
 bot = Bot(command_prefix=COMMAND_SIGN)
 
 role_shop = {"cloutgod" : ["Clout God", "The god of all of CloutNet", 30],
@@ -338,144 +337,6 @@ def flip():
     return "Tails"
 
 
-## Helpers
-
-def getUserFromDb(guildId, memberId,dynamodb=None, returnDynamodb=False):
-  if not dynamodb:
-        dynamodb = boto3.resource('dynamodb', region_name='ca-central-1')
-
-  table = dynamodb.Table('CloutNet')
-
-  try:
-      response = table.get_item(
-          Key={'GuildID': guildId},
-          ProjectionExpression="#usr.#id",
-          ExpressionAttributeNames={
-              '#usr':'Users',
-              '#id': f'{memberId}'
-          })
-  except ClientError as e:
-      print("e.response['Error']['Message']")
-  else:
-      if returnDynamodb:
-        return dynamodb, response.get('Item')
-      else:
-        return response.get('Item')
-
-def getGuildFromDb(guildId,dynamodb=None, returnDynamodb=False):
-  if not dynamodb:
-        dynamodb = boto3.resource('dynamodb', region_name='ca-central-1')
-
-  table = dynamodb.Table('CloutNet')
-
-  try:
-      response = table.get_item(Key={'GuildID': guildId})
-  except ClientError as e:
-      print("e.response['Error']['Message']")
-  else:
-      if returnDynamodb:
-        return dynamodb, response.get('Item')
-      else:
-        return response.get('Item')
-
-def setGuildWithUser(guildId,userId, coins, dynamodb=None, returnDynamodb=False):
-  if not dynamodb:
-        dynamodb = boto3.resource('dynamodb', region_name='ca-central-1')
-
-  table = dynamodb.Table('CloutNet')
-
-  response = table.put_item(
-       Item={
-            'GuildID': guildId,
-            'Users': {
-              f"{userId}" : coins
-            }
-        }
-    )
-  if returnDynamodb:
-    return dynamodb, response
-  else:
-    return response
-
-def setUserCoins(guildId, memberId, amount=1, dynamodb=None, returnDynamodb=False ):
-    if not dynamodb:
-        dynamodb = boto3.resource('dynamodb', region_name='ca-central-1')
-
-    table = dynamodb.Table('CloutNet')
-
-    response = table.update_item(
-        Key={
-            'GuildID': guildId,
-        },
-        UpdateExpression="set #usr.#id = :val",
-        ExpressionAttributeNames={
-            '#usr':'Users',
-            '#id': f'{memberId}',
-        },
-        ExpressionAttributeValues={
-            ':val': amount
-        },
-        ReturnValues="UPDATED_NEW"
-    )
-
-    if returnDynamodb:
-      return dynamodb, response
-    else:
-      return response
-
-def addUserCoins(guildId, memberId, increaseAmount=1, dynamodb=None, returnDynamodb=False ):
-    if not dynamodb:
-        dynamodb = boto3.resource('dynamodb', region_name='ca-central-1')
-
-    table = dynamodb.Table('CloutNet')
-
-    response = table.update_item(
-        Key={
-            'GuildID': guildId,
-        },
-        UpdateExpression="set #usr.#id = #usr.#id + :val",
-        ExpressionAttributeNames={
-            '#usr':'Users',
-            '#id': f'{memberId}',
-        },
-        ExpressionAttributeValues={
-            ':val': increaseAmount
-        },
-        ReturnValues="UPDATED_NEW"
-    )
-
-    if returnDynamodb:
-      return dynamodb, response
-    else:
-      return response
-
-def getCoinsFromUser(userData):
-    return list(userData["Users"].values())[0]
-
-def get_name(username):
-  if username.nick:
-    return username.nick
-  else:
-    return username.name
-
-def at_user(id):
-  return "<@!{0}>".format(id)
-
-def set_user(guildId, id, coins, dynamoDB=None):
-  guild = getGuildFromDb(guildId, dynamoDB)
-  if(guild):
-    setUserCoins(guildId, id, coins, dynamoDB)
-  else:
-    setGuildWithUser(guildId, id, coins, dynamoDB)
-
-"""
-def del_cloutnet(context):
-  guildId = context.guild.id
-  if guild_in_db(guildId):
-    del db[guildId]
-"""
-
-
 # ERRORS
 
 def GUILD_NOT_ON_NET(guildName):
@@ -485,5 +346,5 @@ def NOT_ON_NET(usernameId):
  return "{0} is not on the CloutNet. Use {1}join to get started!".format(at_user(usernameId), COMMAND_SIGN)
 
 
-bot.run("ODYzMjI4NTkyNjgyNDM0NTgw.YOj2Rg.0_QmBqs6OMFq6oYLC9GZgT7SG64")
+bot.run("ODY2MDY3ODkyNDAzNDM3NTY4.YPNKlA.5DUKwmggya_lZjhR1MtHH2RTB8Q")
 #client.run("ODIwMzkwMDUyNDk1ODg0MzA1.YE0dxg.oda2MS-Gv4OxyuovsJgvkrGq8zM")
