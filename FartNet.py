@@ -3,7 +3,7 @@ import discord
 import random
 import math
 
-from asyncio import sleep
+from asyncio import *
 from botocore.exceptions import ClientError
 from discord.ext.commands import Bot, Cog
 from discord.ext import tasks
@@ -27,7 +27,6 @@ NET_NAME = "FartNet"
 async def on_ready():
     print('We have logged in as {0.user}'.format(bot))
     #stimmy_the_net.start()
-
 
 @bot.command(name='join', help="Get started on the CloutNet")
 async def on_message(context):
@@ -61,15 +60,18 @@ async def on_message(context):
 async def on_message(context):
   await context.channel.send(flip())
 
-
 @bot.command(name='alive', help="check if CloutNet is alive.")
 async def on_message(context):
   await context.channel.send("CloutNet never dies.")
 
-# @bot.command(name='stimmy', help="papa gov gives mun")
-# async def on_message(context):
-#   stimmy(context)
-#   await context.channel.send("The Population has been stimmied.")
+@bot.command(name='highlow', help="Play the classic higher or lower game!")
+async def on_message(context):
+  await highlow(context)
+
+@bot.command(name='stimmy', help="papa gov gives mun")
+async def on_message(context):
+  stimmy(context)
+  await context.channel.send("The Population has been stimmied.")
 
 @bot.command(name="finalcountdown", help="costs 5 CC but plays music")
 async def on_message(context):
@@ -81,6 +83,77 @@ async def on_message(context):
  del_cloutnet(context)
  print("Deleted.")
 """
+
+async def highlow(ctx):
+  channel = ctx.channel
+  guildId = ctx.guild.id
+  memberId = ctx.author.id
+
+  def check(m):
+    contentLC = m.content.lower()
+    return ("hi" in contentLC or "lo" in contentLC) and ctx.author == m.author
+
+
+
+  dynamoDB, user = getUserFromDb(guildId, memberId, None, True)
+
+  if(not user):
+    return "Hold the PHONE. You are trying to play a game that's on CloutNet...yet you're not on CloutNet: !join."
+
+  guessCorrectAmount = 5
+
+  correctGuess = True
+  numberOfCorrectGuesses = 0
+
+  hiNum = 10
+  loNum = 1
+  
+
+  coins = getCoinsFromUser(user)
+
+  if(coins >= 1):
+
+    await channel.send(f"{at_user(memberId)} you must get {guessCorrectAmount} correct to double your Clout. The range is [{loNum}, {hiNum}]. You have {coins} CC.")
+    beforeFlip = random.randint(loNum, hiNum)
+    while(correctGuess and numberOfCorrectGuesses < guessCorrectAmount):
+      nextFlip = random.randint(loNum, hiNum)
+      await sleep(0.3)
+      await ctx.channel.send(f"{beforeFlip}, higher or lower? #{numberOfCorrectGuesses+1}")
+
+      try:
+          msg  = await bot.wait_for('message', timeout=60.0, check=check)
+          msgContent = msg.content
+      except TimeoutError:
+          await channel.send(f'Sorry {at_user(memberId)}. Too slow. You lose by default.')
+          setUserCoins(guildId, memberId, 0)
+
+      if("hi" in msgContent.lower() and nextFlip > beforeFlip):
+        await channel.send("Bingo.")
+        numberOfCorrectGuesses += 1
+      elif("lo" in msgContent.lower() and nextFlip <= beforeFlip):
+        numberOfCorrectGuesses += 1
+        await channel.send("Bingo.")
+      else:
+        correctGuess = False
+      
+      beforeFlip = nextFlip
+
+    
+    if(correctGuess):
+      await channel.send(f"{at_user(memberId)} is a CloutGod with numbers.")
+      await channel.send(f"{at_user(memberId)} has doubled their coins from {coins} to {2*coins}!")
+      setUserCoins(guildId, memberId, coins*2)
+    else:
+      await channel.send(f"The number was {nextFlip}. {at_user(memberId)} is very bad with numbers.")
+      await channel.send(f"{at_user(memberId)} has lost all {coins} CC. Go back to school.")
+      setUserCoins(guildId, memberId, 0)
+  else:
+    await channel.send(f"{at_user(memberId)} is so poor they cant even play with numbers.")
+
+
+
+
+
 async def music_request(ctx):
 
   price = 0
@@ -128,9 +201,11 @@ async def music_request(ctx):
           voice_client.play(FFmpegPCMAudio(URL, **FFMPEG_OPTIONS))
           voice_client.is_playing()
 
-      while voice_client.is_playing():
-        await sleep(5)
-      return await autoGamble(voice_client, guildId, memberId, user)
+          while voice_client.is_playing():
+            await sleep(5)
+          return await autoGamble(voice_client, guildId, memberId, user)
+      else:
+        return "Songs already playing bro, take a chill pill."
     else: 
       return "{0} before using this command join a voice channel!".format(at_user(memberId))
   else:
@@ -275,7 +350,7 @@ def gambleLogic(userData, guildId, usernameId):
         setUserCoins(guildId, usernameId, 2*coins)
         msg = "{0} has doubled their CloutCoins from {1} to {2}".format(at_user(usernameId), str(coins), str(2*coins))
       else:
-        setUserCoins(guildId, usernameId, 2*coins)
+        setUserCoins(guildId, usernameId, 0)
         msg = "{0} has lost all {1} CloutCoins\nYou pushed it too far".format(at_user(usernameId), coins)
     else:
       msg = "{0} is too poor to gamble".format(at_user(usernameId))
