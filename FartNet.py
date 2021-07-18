@@ -68,10 +68,10 @@ async def on_message(context):
 async def on_message(context):
   await highlow(context)
 
-@bot.command(name='stimmy', help="papa gov gives mun")
-async def on_message(context):
-  stimmy(context)
-  await context.channel.send("The Population has been stimmied.")
+# @bot.command(name='stimmy', help="papa gov gives mun")
+# async def on_message(context):
+#   stimmy(context)
+#   await context.channel.send("The Population has been stimmied.")
 
 @bot.command(name="finalcountdown", help="costs 5 CC but plays music")
 async def on_message(context):
@@ -118,7 +118,7 @@ async def highlow(ctx):
     while(correctGuess and numberOfCorrectGuesses < guessCorrectAmount):
       nextFlip = random.randint(loNum, hiNum)
       await sleep(0.3)
-      await ctx.channel.send(f"{beforeFlip}, higher or lower? #{numberOfCorrectGuesses+1}")
+      await ctx.channel.send(f"{beforeFlip}, {at_user(memberId)} higher or lower? #{numberOfCorrectGuesses+1}")
 
       try:
           msg  = await bot.wait_for('message', timeout=60.0, check=check)
