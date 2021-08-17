@@ -1,4 +1,6 @@
 import boto3
+import json
+import random
 
 def getUserFromDb(guildId, memberId,dynamodb=None, returnDynamodb=False):
   if not dynamodb:
@@ -127,6 +129,14 @@ def set_user(guildId, id, coins, dynamoDB=None):
     setUserCoins(guildId, id, coins, dynamoDB)
   else:
     setGuildWithUser(guildId, id, coins, dynamoDB)
+
+
+def get_losing_text():
+
+  with open("words.json", 'r') as f:
+    losing_array = json.load(f)["lost"]
+  
+  return random.choice(losing_array)
 
 """
 def del_cloutnet(context):

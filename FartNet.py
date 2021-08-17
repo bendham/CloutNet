@@ -171,7 +171,7 @@ async def music_request(ctx):
   dynamoDB, user = getUserFromDb(guildId, memberId, None, True)
 
   if(not user):
-    return "You do not contain the knowhow of playing music. Joing the net, CloutNet: !join."
+    return f"You do not contain the knowhow of playing music. Joing the net, CloutNet: {COMMAND_SIGN}join."
 
   coins = getCoinsFromUser(user)
   
