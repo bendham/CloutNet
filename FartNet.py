@@ -127,15 +127,17 @@ async def highlow(ctx):
           await channel.send(f'Sorry {at_user(memberId)}. Too slow. You lose by default.')
           setUserCoins(guildId, memberId, 0)
 
-      if("hi" in msgContent.lower() and nextFlip > beforeFlip):
+      if(nextFlip == beforeFlip):
+        await channel.send("You got a freebie! The number was the same.")
+      elif("hi" in msgContent.lower() and nextFlip > beforeFlip):
         await channel.send("Bingo.")
         numberOfCorrectGuesses += 1
-      elif("lo" in msgContent.lower() and nextFlip <= beforeFlip):
-        numberOfCorrectGuesses += 1
+      elif("lo" in msgContent.lower() and nextFlip < beforeFlip):
         await channel.send("Bingo.")
       else:
         correctGuess = False
       
+      numberOfCorrectGuesses += 1
       beforeFlip = nextFlip
 
     
