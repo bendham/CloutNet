@@ -353,7 +353,7 @@ def gambleLogic(userData, guildId, usernameId):
         msg = "{0} has doubled their CloutCoins from {1} to {2}".format(at_user(usernameId), str(coins), str(2*coins))
       else:
         setUserCoins(guildId, usernameId, 0)
-        msg = "{0} has lost all {1} CloutCoins\nYou pushed it too far".format(at_user(usernameId), coins)
+        msg = "{0} has lost all {1} CloutCoins\n{2}".format(at_user(usernameId), coins, get_losing_text())
     else:
       msg = "{0} is too poor to gamble".format(at_user(usernameId))
   else:
