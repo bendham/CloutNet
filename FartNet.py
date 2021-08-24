@@ -11,9 +11,16 @@ from discord import FFmpegPCMAudio
 from helpers import *
 from tabulate import tabulate
 from youtube_dl import YoutubeDL
+from dotenv import load_dotenv
+import os
+
+
+load_dotenv()
+
+
 
 client = discord.Client()
-COMMAND_SIGN = "#"
+COMMAND_SIGN = os.environ.get("COMMAND_SIGN")
 bot = Bot(command_prefix=COMMAND_SIGN)
 
 role_shop = {"cloutgod" : ["Clout God", "The god of all of CloutNet", 30],
@@ -136,7 +143,7 @@ async def highlow(ctx):
         await channel.send("Bingo.")
       else:
         correctGuess = False
-      
+
       numberOfCorrectGuesses += 1
       beforeFlip = nextFlip
 
@@ -422,6 +429,6 @@ def GUILD_NOT_ON_NET(guildName):
 def NOT_ON_NET(usernameId):
  return "{0} is not on the CloutNet. Use {1}join to get started!".format(at_user(usernameId), COMMAND_SIGN)
 
-
-bot.run("ODY2MDY3ODkyNDAzNDM3NTY4.YPNKlA.5DUKwmggya_lZjhR1MtHH2RTB8Q")
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+bot.run(BOT_TOKEN)
 #client.run("ODIwMzkwMDUyNDk1ODg0MzA1.YE0dxg.oda2MS-Gv4OxyuovsJgvkrGq8zM")
