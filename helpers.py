@@ -1,12 +1,13 @@
 import boto3
 import json
 import random
+import settings
 
 def getUserFromDb(guildId, memberId,dynamodb=None, returnDynamodb=False):
   if not dynamodb:
         dynamodb = boto3.resource('dynamodb', region_name='ca-central-1')
 
-  table = dynamodb.Table('CloutNet')
+  table = dynamodb.Table(settings.AWS_TABLE)
 
   try:
       response = table.get_item(
@@ -28,7 +29,7 @@ def getGuildFromDb(guildId,dynamodb=None, returnDynamodb=False):
   if not dynamodb:
         dynamodb = boto3.resource('dynamodb', region_name='ca-central-1')
 
-  table = dynamodb.Table('CloutNet')
+  table = dynamodb.Table(settings.AWS_TABLE)
 
   try:
       response = table.get_item(Key={'GuildID': guildId})
@@ -44,7 +45,7 @@ def setGuildWithUser(guildId,userId, coins, dynamodb=None, returnDynamodb=False)
   if not dynamodb:
         dynamodb = boto3.resource('dynamodb', region_name='ca-central-1')
 
-  table = dynamodb.Table('CloutNet')
+  table = dynamodb.Table(settings.AWS_TABLE)
 
   response = table.put_item(
        Item={
@@ -63,7 +64,7 @@ def setUserCoins(guildId, memberId, amount=1, dynamodb=None, returnDynamodb=Fals
     if not dynamodb:
         dynamodb = boto3.resource('dynamodb', region_name='ca-central-1')
 
-    table = dynamodb.Table('CloutNet')
+    table = dynamodb.Table(settings.AWS_TABLE)
 
     response = table.update_item(
         Key={
@@ -89,7 +90,7 @@ def addUserCoins(guildId, memberId, increaseAmount=1, dynamodb=None, returnDynam
     if not dynamodb:
         dynamodb = boto3.resource('dynamodb', region_name='ca-central-1')
 
-    table = dynamodb.Table('CloutNet')
+    table = dynamodb.Table(settings.AWS_TABLE)
 
     response = table.update_item(
         Key={

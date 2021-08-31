@@ -11,17 +11,9 @@ from discord import FFmpegPCMAudio
 from helpers import *
 from tabulate import tabulate
 from youtube_dl import YoutubeDL
-from dotenv import load_dotenv
-import os
+import settings
 
-
-load_dotenv()
-
-
-
-client = discord.Client()
-COMMAND_SIGN = os.environ.get("COMMAND_SIGN")
-bot = Bot(command_prefix=COMMAND_SIGN)
+bot = Bot(command_prefix=settings.COMMAND_SIGN)
 
 role_shop = {"cloutgod" : ["Clout God", "The god of all of CloutNet", 30],
             "cloutphosopher" : ["Clout Phosopher", "The wisest of all the clout",  20],
@@ -54,6 +46,10 @@ async def on_message(context):
 @bot.command(name='ledger', help="View the CloutNet public ledger")
 async def on_message(context):
   await context.channel.send(await leaderboard(context))
+
+@bot.command(name='recap', help="View the CloutNet public ledger")
+async def on_message(context):
+  await context.channel.send(await weekly_recap(context))
 
 @bot.command(name='buy', help="purchase some clout")
 async def on_message(context):
@@ -398,7 +394,28 @@ def transfer_coin(context):
 async def leaderboard(context):
   guildId = context.guild.id
   guildName = context.guild.name
-  msg = "==== CloutNet Public Ledger ===="
+  msg = "```\n"
+  msg += "==== CloutNet Public Ledger ===="
+
+
+  guild = getGuildFromDb(guildId)
+  if(guild):
+    sorted_dict = dict(sorted(guild["Users"].items(), key=lambda item: item[1], reverse=True))
+    pos = 1
+    for userID in sorted_dict:
+      user = await bot.fetch_user(int(userID))
+      msg = msg + "\n+{0} - {1}CC {2}".format(pos, sorted_dict[userID], user.name)
+      pos = pos + 1
+    msg += "\n```"
+  else:
+    msg=GUILD_NOT_ON_NET(guildName)
+  return msg
+
+async def weekly_recap(context):
+  guildId = context.guild.id
+  guildName = context.guild.name
+  msg = "```diff\n"
+  msg += "==== CloutNet Weekly Recap ===="
 
 
   guild = getGuildFromDb(guildId)
@@ -409,6 +426,7 @@ async def leaderboard(context):
       user = await bot.fetch_user(int(userID))
       msg = msg + "\n{0} - {1}CC {2}".format(pos, sorted_dict[userID], user.name)
       pos = pos + 1
+    msg += "\n```"
   else:
     msg=GUILD_NOT_ON_NET(guildName)
   return msg
@@ -429,6 +447,4 @@ def GUILD_NOT_ON_NET(guildName):
 def NOT_ON_NET(usernameId):
  return "{0} is not on the CloutNet. Use {1}join to get started!".format(at_user(usernameId), COMMAND_SIGN)
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-bot.run(BOT_TOKEN)
-#client.run("ODIwMzkwMDUyNDk1ODg0MzA1.YE0dxg.oda2MS-Gv4OxyuovsJgvkrGq8zM")
+bot.run(settings.BOT_TOKEN)
