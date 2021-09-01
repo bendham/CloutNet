@@ -12,9 +12,9 @@ def getUserFromDb(guildId, memberId,dynamodb=None, returnDynamodb=False):
   try:
       response = table.get_item(
           Key={'GuildID': guildId},
-          ProjectionExpression="#usr.#id",
+          ProjectionExpression="#cur.#id",
           ExpressionAttributeNames={
-              '#usr':'Users',
+              '#cur':'current',
               '#id': f'{memberId}'
           })
   except ClientError as e:
@@ -40,6 +40,36 @@ def getGuildFromDb(guildId,dynamodb=None, returnDynamodb=False):
         return dynamodb, response.get('Item')
       else:
         return response.get('Item')
+
+def getDb(dynamodb=None):
+  if not dynamodb:
+        dynamodb = boto3.resource('dynamodb', region_name='ca-central-1')
+
+  table = dynamodb.Table(settings.AWS_TABLE)
+  response = table.scan()
+
+  return response["Items"]
+
+def setPrevious(guildId, newData, dynamodb=None):
+
+  if not dynamodb:
+      dynamodb = boto3.resource('dynamodb', region_name='ca-central-1')
+
+  table = dynamodb.Table(settings.AWS_TABLE)
+
+  response = table.update_item(
+        Key={
+            'GuildID': guildId,
+        },
+        UpdateExpression="set previous=:new",
+        ExpressionAttributeValues={
+            ':new': newData
+        },
+        ReturnValues="UPDATED_NEW"
+    )
+  return response
+
+
 
 def setGuildWithUser(guildId,userId, coins, dynamodb=None, returnDynamodb=False):
   if not dynamodb:
@@ -70,9 +100,9 @@ def setUserCoins(guildId, memberId, amount=1, dynamodb=None, returnDynamodb=Fals
         Key={
             'GuildID': guildId,
         },
-        UpdateExpression="set #usr.#id = :val",
+        UpdateExpression="set #cur.#id = :val",
         ExpressionAttributeNames={
-            '#usr':'Users',
+            '#cur':'current',
             '#id': f'{memberId}',
         },
         ExpressionAttributeValues={
@@ -96,9 +126,9 @@ def addUserCoins(guildId, memberId, increaseAmount=1, dynamodb=None, returnDynam
         Key={
             'GuildID': guildId,
         },
-        UpdateExpression="set #usr.#id = #usr.#id + :val",
+        UpdateExpression="set #cur.#id = #cur.#id + :val",
         ExpressionAttributeNames={
-            '#usr':'Users',
+            '#cur':'current',
             '#id': f'{memberId}',
         },
         ExpressionAttributeValues={
@@ -113,7 +143,7 @@ def addUserCoins(guildId, memberId, increaseAmount=1, dynamodb=None, returnDynam
       return response
 
 def getCoinsFromUser(userData):
-    return list(userData["Users"].values())[0]
+    return list(userData["current"].values())[0]
 
 def get_name(username):
   if username.nick:

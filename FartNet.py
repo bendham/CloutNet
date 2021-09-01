@@ -2,6 +2,7 @@ import boto3
 import discord
 import random
 import math
+import aiocron
 
 from asyncio import *
 from botocore.exceptions import ClientError
@@ -45,11 +46,11 @@ async def on_message(context):
 
 @bot.command(name='ledger', help="View the CloutNet public ledger")
 async def on_message(context):
-  await context.channel.send(await leaderboard(context))
+  await context.channel.send(embed=await leaderboard(context))
 
 @bot.command(name='recap', help="View the CloutNet public ledger")
 async def on_message(context):
-  await context.channel.send(await weekly_recap(context))
+  await context.channel.send(embed=await weekly_recap(context))
 
 @bot.command(name='buy', help="purchase some clout")
 async def on_message(context):
@@ -176,7 +177,7 @@ async def music_request(ctx):
   dynamoDB, user = getUserFromDb(guildId, memberId, None, True)
 
   if(not user):
-    return f"You do not contain the knowhow of playing music. Joing the net, CloutNet: {COMMAND_SIGN}join."
+    return f"You do not contain the knowhow of playing music. Joing the net, CloutNet: {settings.COMMAND_SIGN}join."
 
   coins = getCoinsFromUser(user)
   
@@ -235,7 +236,7 @@ def stimmy(context, dynamodb=None):
       data.extend(response['Items'])
   
   for dataSet in data:
-    users = dataSet["Users"]
+    users = dataSet["current"]
     sortedUsers = dict(sorted(users.items(), key=lambda item: item[1], reverse=True))
   
     for idx, user in enumerate(sortedUsers.keys()):
@@ -248,7 +249,7 @@ def stimmy(context, dynamodb=None):
 
         sortedUsers[user] = sortedUsers[user] + increment
     
-    dataSet["Users"] = sortedUsers
+    dataSet["current"] = sortedUsers
 
     table.put_item(Item=dataSet)
  
@@ -391,45 +392,144 @@ def transfer_coin(context):
     return "{0} has transfered {1} CloutCoins to {2}".format(at_user(usernameId), coins, at_user(payeeId))
     
 
+# async def leaderboard(context):
+#   guildId = context.guild.id
+#   guildName = context.guild.name
+#   msg = "==== CloutNet Public Ledger ===="
+
+
+#   guild = getGuildFromDb(guildId)
+#   if(guild):
+#     sorted_dict = dict(sorted(guild["current"].items(), key=lambda item: item[1], reverse=True))
+#     pos = 1
+#     for userID in sorted_dict:
+#       user = await bot.fetch_user(int(userID))
+#       msg = msg + "\n+{0} - {1}CC {2}".format(pos, sorted_dict[userID], user.name)
+#       pos = pos + 1
+#   else:
+#     msg=GUILD_NOT_ON_NET(guildName)
+#   return msg
+
 async def leaderboard(context):
   guildId = context.guild.id
   guildName = context.guild.name
-  msg = "```\n"
-  msg += "==== CloutNet Public Ledger ===="
+
 
 
   guild = getGuildFromDb(guildId)
   if(guild):
-    sorted_dict = dict(sorted(guild["Users"].items(), key=lambda item: item[1], reverse=True))
+    sorted_dict = dict(sorted(guild["current"].items(), key=lambda item: item[1], reverse=True))
     pos = 1
+    msg=""
     for userID in sorted_dict:
       user = await bot.fetch_user(int(userID))
       msg = msg + "\n+{0} - {1}CC {2}".format(pos, sorted_dict[userID], user.name)
+      
       pos = pos + 1
-    msg += "\n```"
+    embed=discord.Embed(title="==== CloutNet Public Ledger ====", color=0xa9ce46, description=msg)
   else:
-    msg=GUILD_NOT_ON_NET(guildName)
-  return msg
+    embed=discord.Embed(title=GUILD_NOT_ON_NET(guildName), color=0xa9ce46)
+  return embed
 
-async def weekly_recap(context):
-  guildId = context.guild.id
-  guildName = context.guild.name
-  msg = "```diff\n"
-  msg += "==== CloutNet Weekly Recap ===="
+@aiocron.crontab('0 12 * * 5')
+async def send_weekly_recap_cron():
 
+  database = getDb()
 
-  guild = getGuildFromDb(guildId)
-  if(guild):
-    sorted_dict = dict(sorted(guild["Users"].items(), key=lambda item: item[1], reverse=True))
-    pos = 1
-    for userID in sorted_dict:
-      user = await bot.fetch_user(int(userID))
-      msg = msg + "\n{0} - {1}CC {2}".format(pos, sorted_dict[userID], user.name)
-      pos = pos + 1
-    msg += "\n```"
+  for entry in database:
+    id = int(entry['GuildID'])
+    textChannel= getGuildTextChannel(id)
+    if(textChannel):
+      await textChannel.send(embed=await weekly_recap(entry))
+
+      setPrevious(id,entry['current'])
+
+async def weekly_recap(guild):
+  embed=discord.Embed(title="==== CloutNet Weekly Recap ====", color=0xa9ce46)
+  current_sorted_dict = dict(sorted(guild["current"].items(), key=lambda item: item[1], reverse=True))
+  previous_sorted_dict = dict(sorted(guild["previous"].items(), key=lambda item: item[1], reverse=True))
+
+  biggestLoser = {"user": "Nobody", "amount": 0}
+  biggestGainer = {"user": "Nobody", "amount": 0}
+
+  positionString=""
+
+  pos = 1
+  for userID in current_sorted_dict:
+    user = await bot.fetch_user(int(userID))
+
+    change, amountChange = getUserChangeDetails(current_sorted_dict,previous_sorted_dict,userID, pos)
+
+    if amountChange > biggestGainer["amount"]:
+      biggestGainer['user'] = user.name
+      biggestGainer['amount'] = amountChange
+    elif amountChange < biggestLoser['amount']:
+      biggestLoser['user'] = user.name
+      biggestLoser['amount'] = amountChange
+
+    
+    positionString = positionString + f"\n{pos} - {change['placeChange']} {change['moneyChange']}CC {user.name}"
+    pos = pos + 1
+
+  
+  embed.add_field(name="--- Position & Clout Changes ---", value=positionString, inline=False)
+
+  gainerMsg = ""
+  if(biggestGainer["amount"] == 0):
+    gainerMsg+= "\nThere are no biggest gainers for this week"
   else:
-    msg=GUILD_NOT_ON_NET(guildName)
-  return msg
+    gainerMsg += f"\n{biggestGainer['user']} was the biggest weekly gainer, gaining {biggestGainer['amount']}CC"
+
+  if(biggestLoser["amount"] == 0):
+    gainerMsg+= "\nThere are no biggest losers for this week. You all did great."
+  else:
+    gainerMsg += f"\n{biggestLoser['user']} was the biggest weekly loser, losing {biggestLoser['amount']}CC"
+
+
+  embed.add_field(name="--- Gainers & Losers ---", value=gainerMsg, inline=False)
+
+  return embed
+
+def getSpan(text, color="white"):
+  return f"<span style='color:{color}; display:block'>{text}</span>"
+  
+def getUserChangeDetails(current, prev, userId, currentPos):
+  posCount=1
+  for id in prev:
+    if(id == userId):
+      previousPos = posCount
+      break
+    else:
+      posCount+=1
+
+  placeChange = currentPos-previousPos
+  absPlaceChange = abs(placeChange)
+
+  placeChangeSymbol = "⇒"
+  color="white"
+  if(placeChange < 0):
+    placeChangeSymbol = "▲"
+    color="green"
+  elif(placeChange > 0):
+    placeChangeSymbol = "▼"
+    color="red"
+
+  moneyChange = current[userId]-prev[userId]
+  absMoneyChange = abs(moneyChange)
+
+  moneyChangeSymbol = "="
+  if(moneyChange > 0):
+    moneyChangeSymbol = "+"
+  elif(moneyChange < 0):
+    moneyChangeSymbol = "-"
+
+  change_details = {
+    "placeChange" : placeChangeSymbol+str(absPlaceChange),
+    "moneyChange" : moneyChangeSymbol+str(absMoneyChange),
+    "color":color
+  }
+
+  return change_details, moneyChange
 
 def flip():
   flip = random.randint(0, 1)
@@ -439,12 +539,36 @@ def flip():
     return "Tails"
 
 
+def getGuildTextChannel(guildId):
+
+  guild = bot.get_guild(guildId)
+  textChannelList = guild.text_channels
+
+  txtChannel = None
+
+  for item in textChannelList:
+    if(item.name.lower() == settings.TEXT_CHANNEL):
+      txtChannel = item
+      break
+    
+  return txtChannel
+
+async def sendMessageToGuilds(text):
+  database = getDb()
+  print("Got this afart")
+
+  for id in database.keys():
+    textChannel = getGuildTextChannel(id)
+    if(textChannel):
+      print("ehllot")
+      await textChannel.send(text)
+
 # ERRORS
 
 def GUILD_NOT_ON_NET(guildName):
   return f"{guildName} is not on the CloutNet! Be the first to join! Use !join to get started."
 
 def NOT_ON_NET(usernameId):
- return "{0} is not on the CloutNet. Use {1}join to get started!".format(at_user(usernameId), COMMAND_SIGN)
+ return "{0} is not on the CloutNet. Use {1}join to get started!".format(at_user(usernameId), settings.COMMAND_SIGN)
 
 bot.run(settings.BOT_TOKEN)
