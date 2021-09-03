@@ -48,10 +48,6 @@ async def on_message(context):
 async def on_message(context):
   await context.channel.send(embed=await leaderboard(context))
 
-@bot.command(name='recap', help="View the CloutNet public ledger")
-async def on_message(context):
-  await context.channel.send(embed=await weekly_recap(context))
-
 @bot.command(name='buy', help="purchase some clout")
 async def on_message(context):
   await context.channel.send(await buy_clout(context))
@@ -423,7 +419,7 @@ async def leaderboard(context):
     msg=""
     for userID in sorted_dict:
       user = await bot.fetch_user(int(userID))
-      msg = msg + "\n+{0} - {1}CC {2}".format(pos, sorted_dict[userID], user.name)
+      msg = msg + "\n{0} - {1}CC {2}".format(pos, sorted_dict[userID], user.name)
       
       pos = pos + 1
     embed=discord.Embed(title="==== CloutNet Public Ledger ====", color=0xa9ce46, description=msg)
@@ -431,7 +427,9 @@ async def leaderboard(context):
     embed=discord.Embed(title=GUILD_NOT_ON_NET(guildName), color=0xa9ce46)
   return embed
 
-@aiocron.crontab('0 12 * * 5')
+
+#'0 12 * * 6'
+@aiocron.crontab('* * * * *')
 async def send_weekly_recap_cron():
 
   database = getDb()
@@ -517,10 +515,8 @@ def getUserChangeDetails(current, prev, userId, currentPos):
   moneyChange = current[userId]-prev[userId]
   absMoneyChange = abs(moneyChange)
 
-  moneyChangeSymbol = "="
-  if(moneyChange > 0):
-    moneyChangeSymbol = "+"
-  elif(moneyChange < 0):
+  moneyChangeSymbol = "+"
+  if(moneyChange < 0):
     moneyChangeSymbol = "-"
 
   change_details = {

@@ -80,7 +80,10 @@ def setGuildWithUser(guildId,userId, coins, dynamodb=None, returnDynamodb=False)
   response = table.put_item(
        Item={
             'GuildID': guildId,
-            'Users': {
+            'current': {
+              f"{userId}" : coins
+            },
+            'previous': {
               f"{userId}" : coins
             }
         }
@@ -90,26 +93,42 @@ def setGuildWithUser(guildId,userId, coins, dynamodb=None, returnDynamodb=False)
   else:
     return response
 
-def setUserCoins(guildId, memberId, amount=1, dynamodb=None, returnDynamodb=False ):
+def setUserCoins(guildId, memberId, amount=1, dynamodb=None, returnDynamodb=False, setPrev=False):
     if not dynamodb:
         dynamodb = boto3.resource('dynamodb', region_name='ca-central-1')
 
     table = dynamodb.Table(settings.AWS_TABLE)
-
-    response = table.update_item(
-        Key={
-            'GuildID': guildId,
-        },
-        UpdateExpression="set #cur.#id = :val",
-        ExpressionAttributeNames={
-            '#cur':'current',
-            '#id': f'{memberId}',
-        },
-        ExpressionAttributeValues={
-            ':val': amount
-        },
-        ReturnValues="UPDATED_NEW"
-    )
+    if(not setPrev):
+      response = table.update_item(
+          Key={
+              'GuildID': guildId,
+          },
+          UpdateExpression="set #cur.#id = :val",
+          ExpressionAttributeNames={
+              '#cur':'current',
+              '#id': f'{memberId}',
+          },
+          ExpressionAttributeValues={
+              ':val': amount
+          },
+          ReturnValues="UPDATED_NEW"
+      )
+    else:
+      response = table.update_item(
+          Key={
+              'GuildID': guildId,
+          },
+          UpdateExpression="set #cur.#id = :val, #prev.#id = :val",
+          ExpressionAttributeNames={
+              '#cur':'current',
+              '#id': f'{memberId}',
+              '#prev':'previous'
+          },
+          ExpressionAttributeValues={
+              ':val': amount
+          },
+          ReturnValues="UPDATED_NEW"
+      )
 
     if returnDynamodb:
       return dynamodb, response
@@ -157,7 +176,7 @@ def at_user(id):
 def set_user(guildId, id, coins, dynamoDB=None):
   guild = getGuildFromDb(guildId, dynamoDB)
   if(guild):
-    setUserCoins(guildId, id, coins, dynamoDB)
+    setUserCoins(guildId, id, coins, dynamoDB, setPrev=True)
   else:
     setGuildWithUser(guildId, id, coins, dynamoDB)
 
