@@ -2,6 +2,7 @@ import boto3
 import json
 import random
 import settings
+import discord
 
 def getUserFromDb(guildId, memberId,dynamodb=None, returnDynamodb=False):
   if not dynamodb:
@@ -187,6 +188,14 @@ def get_losing_text():
     losing_array = json.load(f)["lost"]
   
   return random.choice(losing_array)
+
+
+def buildUpdateMessage(text):
+  embed = discord.Embed(title="==== UPDATE ALERT ====", color=0xa9ce46)
+  embed.add_field(name=f"--- {text['title']} ---", value=text['desc'], inline=False)
+  embed.add_field(name=f"Also...", value="CloutNet will be down temporarily", inline=False)
+
+  return embed
 
 """
 def del_cloutnet(context):

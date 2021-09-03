@@ -14,6 +14,8 @@ from tabulate import tabulate
 from youtube_dl import YoutubeDL
 import settings
 
+from update_messages import updateMsg1
+
 bot = Bot(command_prefix=settings.COMMAND_SIGN)
 
 role_shop = {"cloutgod" : ["Clout God", "The god of all of CloutNet", 30],
@@ -67,6 +69,11 @@ async def on_message(context):
 @bot.command(name='highlow', help="Play the classic higher or lower game!")
 async def on_message(context):
   await highlow(context)
+
+@bot.command(name='update', help="Message CloutNet the new update. Only Void has these privlidges.")
+async def on_message(context):
+  if(context.author.id == 197808116962820096):
+    await sendMessageToGuilds(buildUpdateMessage(updateMsg1))
 
 # @bot.command(name='stimmy', help="papa gov gives mun")
 # async def on_message(context):
@@ -427,9 +434,7 @@ async def leaderboard(context):
     embed=discord.Embed(title=GUILD_NOT_ON_NET(guildName), color=0xa9ce46)
   return embed
 
-
-#'0 12 * * 6'
-@aiocron.crontab('* * * * *')
+@aiocron.crontab('0 12 * * 6')
 async def send_weekly_recap_cron():
 
   database = getDb()
@@ -549,15 +554,14 @@ def getGuildTextChannel(guildId):
     
   return txtChannel
 
-async def sendMessageToGuilds(text):
+async def sendMessageToGuilds(embed):
   database = getDb()
-  print("Got this afart")
 
-  for id in database.keys():
+  for entry in database:
+    id = int(entry['GuildID'])
     textChannel = getGuildTextChannel(id)
     if(textChannel):
-      print("ehllot")
-      await textChannel.send(text)
+      await textChannel.send(embed=embed)
 
 # ERRORS
 
