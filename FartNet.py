@@ -613,9 +613,9 @@ def userHasRoles(member):
 
   return hasRole
 
-def updateFunction(updateMsg):
+async def updateFunction(updateMsg):
   if(updateMsg):
-    messageGuilds(buildUpdateMessage(updateMsg))
+    await messageGuilds(buildUpdateMessage(updateMsg))
 
 async def messageGuilds(embedAnouncement, database=None):
   if(not database):
