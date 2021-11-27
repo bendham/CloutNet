@@ -14,6 +14,7 @@ from helpers import *
 from tabulate import tabulate
 from youtube_dl import YoutubeDL
 from settings import COMMAND_SIGN
+from discord.utils import get
 
 from roles.CloutGod import CloutGod
 
@@ -588,8 +589,10 @@ async def iterateUsersInGuild(entry):
         for roleName in refundableRoles:
           commandName = roleName.lower().replace(" ", "")
           moneyRefund += role_shop[commandName][2]
+          
 
-        addUserCoins(guildId, userid, moneyRefund)
+
+        #addUserCoins(guildId, userid, moneyRefund)
 
         roleString = ""
         idx = 0
@@ -599,7 +602,11 @@ async def iterateUsersInGuild(entry):
             roleString += ", "
           idx += 1
 
-        await guildTxt.send(f"{at_user(userid)} has been refunded {moneyRefund} for their roles of: {roleString}")
+        #await guildTxt.send(f"{at_user(userid)} has been refunded {moneyRefund} for their roles of: {roleString}")
+    
+      for roleName in refundableRoles:
+          role = get(guild.roles, name=roleName)  
+          await role.delete()
 
 def userHasRoles(member):
   cloutRoles = ["Clout God", "Clout Phosopher", "Cloutteus Maximus"]

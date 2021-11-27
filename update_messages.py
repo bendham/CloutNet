@@ -10,5 +10,5 @@ updateMsg2 = {
 
     'title':"The big refund!",
     'desc': 
-    ''' You have all been refunded for the roles you have purchased in the past.\n Don't thank me, thank the net - CloutNet. I am reworking the roles so this is a good place to stat :)'''
+    ''' You have all been refunded for the roles you have purchased in the past.\n Don't thank me, thank the net - CloutNet. I am reworking the roles so this is a good place to start :)'''
 }
