@@ -615,7 +615,7 @@ def userHasRoles(member):
 
 def updateFunction(updateMsg):
   if(updateMsg):
-    messageGuilds(embed=buildUpdateMessage(updateMsg))
+    messageGuilds(buildUpdateMessage(updateMsg))
 
 async def messageGuilds(embedAnouncement, database=None):
   if(not database):
