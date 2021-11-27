@@ -9,21 +9,21 @@ from botocore.exceptions import ClientError
 from discord.ext.commands import Bot, Cog
 from discord.ext import tasks
 from discord import FFmpegPCMAudio
+from discord.ext.commands.core import guild_only
 from helpers import *
 from tabulate import tabulate
 from youtube_dl import YoutubeDL
-import settings
+from settings import COMMAND_SIGN
 
-from update_messages import updateMsg1
+from roles.CloutGod import CloutGod
 
-bot = Bot(command_prefix=settings.COMMAND_SIGN)
+from update_messages import updateMsg2
+
+bot = Bot(command_prefix=COMMAND_SIGN)
 
 role_shop = {"cloutgod" : ["Clout God", "The god of all of CloutNet", 30],
             "cloutphosopher" : ["Clout Phosopher", "The wisest of all the clout",  20],
             "cloutteusmaximus": ["Cloutteus Maximus", "The big booty of the CloutNet",  10]}
-
-NET_NAME = "FartNet"
-
 
 @bot.event
 async def on_ready():
@@ -73,7 +73,7 @@ async def on_message(context):
 @bot.command(name='update', help="Message CloutNet the new update. Only Void has these privlidges.")
 async def on_message(context):
   if(context.author.id == 197808116962820096):
-    await sendMessageToGuilds(buildUpdateMessage(updateMsg1))
+    await updateFunction(updateMsg2)
 
 # @bot.command(name='stimmy', help="papa gov gives mun")
 # async def on_message(context):
@@ -83,6 +83,21 @@ async def on_message(context):
 @bot.command(name="finalcountdown", help="costs 5 CC but plays music")
 async def on_message(context):
   await context.channel.send(await music_request(context))
+
+# @bot.command(name="test", help="costs 5 CC but plays music")
+# async def on_message(context):
+#   guild = context.guild
+#   member = context.author
+
+#   cGod = CloutGod(guild)
+#   await cGod.addToMemberInGuild(member)
+  
+#   await context.channel.send("Became a CloutGod Made")
+
+@bot.command(name="refund", help="refund roles")
+async def on_message(context):
+  if(context.author.id == 197808116962820096):
+    await refund()
 
 """
 @bot.command(name='del', help="papa delete clout")
@@ -107,7 +122,7 @@ async def highlow(ctx):
   if(not user):
     return "Hold the PHONE. You are trying to play a game that's on CloutNet...yet you're not on CloutNet: !join."
 
-  guessCorrectAmount = 5
+  guessCorrectAmount = 4
 
   correctGuess = True
   numberOfCorrectGuesses = 0
@@ -293,15 +308,11 @@ async def buy_clout(context):
       if(userCoins >= price):
         setUserCoins(guildId, memberId, userCoins - price, dynamoDB)
 
-        roleNameList = [guildRole.name for guildRole in guild.roles]
+        hasRole = isRoleInGuild(roleName, guild)
+        if(not hasRole):
+          await createRoleInGuild(roleName, guild)
 
-        if(roleName not in roleNameList):
-          await guild.create_role(name=roleName)
-
-        for potentialRole in guild.roles:
-            if potentialRole.name == roleName:
-              await member.add_roles(potentialRole,reason="Bought some clout.", atomic=True)
-              break
+        await addExistingRole(guild, member, roleName, reason="Bought some clout")
 
         msg = "{} is now a {}".format(at_user(memberId),roleName)
 
@@ -416,8 +427,6 @@ def transfer_coin(context):
 async def leaderboard(context):
   guildId = context.guild.id
   guildName = context.guild.name
-
-
 
   guild = getGuildFromDb(guildId)
   if(guild):
@@ -554,14 +563,88 @@ def getGuildTextChannel(guildId):
     
   return txtChannel
 
-async def sendMessageToGuilds(embed):
-  database = getDb()
+async def refund(database=None):
+  if(not database):
+    database = getDb()
+
+  for entry in database:
+    await iterateUsersInGuild(entry)
+
+async def iterateUsersInGuild(entry):
+  users = entry['current']
+
+  guildId = int(entry['GuildID'])
+  guild = bot.get_guild(guildId)
+
+  guildTxt = getGuildTextChannel(guildId)
+  if(guildTxt):
+       
+    for userid in users.keys():
+      member = await guild.fetch_member(int(userid))
+
+      refundableRoles = userHasRoles(member)
+      if refundableRoles:
+        moneyRefund = 0
+        for roleName in refundableRoles:
+          commandName = roleName.lower().replace(" ", "")
+          moneyRefund += role_shop[commandName][2]
+
+        addUserCoins(guildId, userid, moneyRefund)
+
+        roleString = ""
+        idx = 0
+        for role in refundableRoles:
+          roleString += role
+          if(idx+1 != len(refundableRoles)):
+            roleString += ", "
+          idx += 1
+
+        await guildTxt.send(f"{at_user(userid)} has been refunded {moneyRefund} for their roles of: {roleString}")
+
+def userHasRoles(member):
+  cloutRoles = ["Clout God", "Clout Phosopher", "Cloutteus Maximus"]
+  memberRoleNameList = [memberRole.name for memberRole in member.roles]
+
+  hasRole = []
+
+  for role in memberRoleNameList: 
+    if(role in cloutRoles):
+      hasRole.append(role)
+
+  return hasRole
+
+def updateFunction(updateMsg):
+  if(updateMsg):
+    messageGuilds(embed=buildUpdateMessage(updateMsg))
+
+async def messageGuilds(embedAnouncement, database=None):
+  if(not database):
+    database = getDb()
 
   for entry in database:
     id = int(entry['GuildID'])
-    textChannel = getGuildTextChannel(id)
-    if(textChannel):
-      await textChannel.send(embed=embed)
+
+    if(embedAnouncement):
+      textChannel = getGuildTextChannel(id)
+      if(textChannel):
+        await textChannel.send(embed=embedAnouncement)
+
+def isRoleInGuild(roleName, guild):
+  roleNameList = [guildRole.name for guildRole in guild.roles]
+
+  if(roleName not in roleNameList):
+    return False
+  else:
+    return True
+
+async def createRoleInGuild(roleName, guild):
+  await guild.create_role(name=roleName)
+
+async def addExistingRole(guild, member, roleName, reason="Just cause"):
+  for potentialRole in guild.roles:
+    if potentialRole.name == roleName:
+      await member.add_roles(potentialRole,reason=reason, atomic=True)
+      break
 
 # ERRORS
 

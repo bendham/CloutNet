@@ -193,7 +193,7 @@ def get_losing_text():
 def buildUpdateMessage(text):
   embed = discord.Embed(title="==== UPDATE ALERT ====", color=0xa9ce46)
   embed.add_field(name=f"--- {text['title']} ---", value=text['desc'], inline=False)
-  embed.add_field(name=f"Also...", value="CloutNet will be down temporarily", inline=False)
+  #embed.add_field(name=f"Also...", value="CloutNet will be down temporarily", inline=False)
 
   return embed
 
