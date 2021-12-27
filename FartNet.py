@@ -18,7 +18,7 @@ from discord.utils import get
 
 from roles.CloutGod import CloutGod
 
-from update_messages import updateMsg2
+from update_messages import updateMsg3
 
 bot = Bot(command_prefix=COMMAND_SIGN)
 
