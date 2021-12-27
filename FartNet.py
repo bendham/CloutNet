@@ -74,7 +74,7 @@ async def on_message(context):
 @bot.command(name='update', help="Message CloutNet the new update. Only Void has these privlidges.")
 async def on_message(context):
   if(context.author.id == 197808116962820096):
-    await updateFunction(updateMsg2)
+    await updateFunction(updateMsg3)
 
 # @bot.command(name='stimmy', help="papa gov gives mun")
 # async def on_message(context):
